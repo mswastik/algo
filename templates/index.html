@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="m-3">
+<input id="select2" class="input input-bordered input-bordered-primary" list="brow">
+<datalist id="brow">
+  <option value="Internet Explorer">
+  <option value="Firefox">
+  <option value="Chrome">
+  <option value="Opera">
+  <option value="Safari">
+</datalist> 
+<button class="btn btn-primary px-3 mx-5" hx-on:click="">Save</button>
+</div>
+<div class="flex w-full">
+    <div class="card place-items-center rounded-lg px-5">
+    <ul class="menu menu-vertical bg-base-200">
+        {% for item in seq %}
+        <li hx-post={{"/strategies/%s" % item}} hx-target=".strategy" hx-swap="outerHTML"><a>{{ item }}</a></li>
+    {% endfor %}
+    </ul>
+    </div>
+
+    <div class="divider divider-horizontal"></div>
+    <div class="card flex-grow">
+    <div class="mockup-code">
+        <div hx-post={{"/strategies/edit/%s" % item}}><pre class="strategy"><code class="language-python"></code></pre></div>
+    <textarea class="textarea w-full min-h-16 bg-gray-800" style="white-space: pre;">
+    </textarea>
+    </div>
+</div>
+</div>
+<script>
+    document.getElementById('select2').addEventListener('change',function(){
+    if( document.getElementById('brow').querySelector('[value='+this.value+']') === null ){
+        this.value = '';
+    }});
+</script>
+<script>
+    htmx.on('htmx:afterSettle', (evt) => {
+        hljs.highlightAll();
+        })
+</script>
+
+{% endblock %}
