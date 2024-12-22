@@ -9,9 +9,10 @@
   <option value="Opera">
   <option value="Safari">
 </datalist> 
-<button class="btn btn-primary px-3 mx-5" hx-on:click="">Save</button>
+<button class="btn btn-primary px-3 mx-5" hx-post="/save">Save</button>
 </div>
 <div class="flex w-full">
+    {% set ns =namespace(it = '') %}
     <div class="card place-items-center rounded-lg px-5">
     <ul class="menu menu-vertical bg-base-200">
         {% for item in seq %}
@@ -22,11 +23,9 @@
 
     <div class="divider divider-horizontal"></div>
     <div class="card flex-grow">
-    <div class="mockup-code">
-        <div hx-post={{"/strategies/edit/%s" % item}}><pre class="strategy"><code class="language-python"></code></pre></div>
-    <textarea class="textarea w-full min-h-16 bg-gray-800" style="white-space: pre;">
-    </textarea>
-    </div>
+    <div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy"><pre><code class="language-python"></code></pre></div>
+    <!--<textarea class="textarea w-full min-h-16 bg-gray-800" style="white-space: pre;"> 
+    </textarea> -->
 </div>
 </div>
 <script>
@@ -36,9 +35,7 @@
     }});
 </script>
 <script>
-    htmx.on('htmx:afterSettle', (evt) => {
-        hljs.highlightAll();
-        })
+    htmx.on('htmx:afterSettle', (evt) => { hljs.highlightAll();})
 </script>
 
 {% endblock %}
