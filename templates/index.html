@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="m-3 flex flex-row" x-data="{ open: false }">
+
 <input id="select2" class="input input-sm input-bordered input-bordered-primary" 
         hx-post="/loaddata" list="brow" placeholder="Symbol" name="symbol">
 <datalist id="brow">
@@ -8,6 +9,8 @@
     <option value={{i}}>
         {% endfor %} 
 </datalist>
+<button class="btn btn-sm btn-secondary mx-5" hx-post="/run" hx-include="#select2" hx-target="#stats" hx-swap="innerHTML">Run</button>
+
 <button class="btn btn-sm btn-primary mx-3" x-on:click="open = ! open">New</button>
 <form hx-post="/new" x-show="open"><input class="input input-sm input-bordered" name="filename"><button class="btn btn-sm mx-3">Save</button></form>
 </div>
@@ -23,7 +26,9 @@
 
     <div class="divider divider-horizontal"></div>
     <div class="card flex-grow">
-    <div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy"><pre><code class="language-python"></code></pre></div>
+    <div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy">
+        <pre><code class="language-python"></code></pre>
+    </div>
 </div>
 <div class="card flex-grow" id="stats"></div>
 </div>
