@@ -20,6 +20,7 @@ df=pl.read_parquet(f'C:\\Users\\{os.getlogin()}\\OneDrive\\Python\\stockdata.par
 #df=pl.read_csv(f'stockdata.csv')
 app.state.it=''
 app.state.df=''
+app.state.fig=''
 
 @app.get("/")
 async def read_root(request:Request):
@@ -54,7 +55,7 @@ async def edit_item():
         <button class="btn btn-sm btn-secondary" hx-post="/run" hx-target="#stats" hx-swap="innerHTML">Run</button>
         <button class="btn btn-sm btn-primary" type="submit">Save</button>
         <button class="btn btn-sm btn-primary" hx-post="/strategies/{app.state.it}">Cancel</button>
-        <textarea name="cont" spellcheck="false" class="textarea bg-gray-800 w-full" 
+        <textarea name="cont" spellcheck="false" class="textarea bg-black w-full" 
         style="white-space: pre; min-height:600px;">{fl}</textarea></form></div>''')
 
 @app.post("/save/")
@@ -68,24 +69,22 @@ async def save_item(cont: str=Form(...)):
 async def run_strategy(symbol: str = Form(...)):
     print(app.state.it)
     strategy_name = app.state.it
-    
     # Filter data by symbol
     data = df.filter(pl.col('symbol') == symbol)
-    
     # Instantiate Backtester
     backtester = Backtester(data)
-
     # Load the strategy module
     my_module = SourceFileLoader(strategy_name, f"strategies/{app.state.it}").load_module()
-    
     # Apply the strategy
-    results = backtester.apply_strategy(my_module.apply_strategy)
-    
+    results, app.state.fig , app.state.fig1 = backtester.apply_strategy(my_module.simple_moving_average_strategy)
     # Format results for display
     stats_df = pd.DataFrame([results]).T
-    stats_html = stats_df.to_html(justify='left')
-    
+    stats_html = stats_df.to_html(justify='left')    
     return HTMLResponse(stats_html.replace("\n", ""))
+
+@app.post("/fig")
+async def fig():
+    return HTMLResponse(app.state.fig)
 
 @app.post("/new")
 async def new_item(filename: str=Form(...)):
@@ -102,3 +101,22 @@ async def edit_item(symbol: str=Form(...)):
     app.state.df=df1
     #print("loading  ".join(app.state.df))
     return symbol
+
+@app.post("/optimize")
+async def run_strategy(symbol: str = Form(...)):
+    print(app.state.it)
+    strategy_name = app.state.it
+    # Filter data by symbol
+    data = df.filter(pl.col('symbol') == symbol)
+    # Instantiate Backtester
+    backtester = Backtester(data)
+    # Load the strategy module
+    my_module = SourceFileLoader(strategy_name, f"strategies/{app.state.it}").load_module()
+    # Apply the strategy
+    results, app.state.fig , app.state.fig1 = backtester.apply_strategy(my_module.simple_moving_average_strategy,optimize=True)
+    
+    # Format results for display
+    stats_df = pd.DataFrame([results]).T
+    stats_html = stats_df.to_html(justify='left')
+    
+    return HTMLResponse(stats_html.replace("\n", ""))

@@ -9,7 +9,8 @@
     <option value={{i}}>
         {% endfor %} 
 </datalist>
-<button class="btn btn-sm btn-secondary mx-5" hx-post="/run" hx-include="#select2" hx-target="#stats" hx-swap="innerHTML">Run</button>
+<button class="btn btn-sm btn-secondary mx-5" hx-post="/run" hx-include="#select2" hx-target="#stats" hx-swap="innerHTML" >Run</button>
+<button class="btn btn-sm btn-secondary mx-5" hx-post="/optimize" hx-include="#select2" hx-target="#stats" hx-swap="innerHTML">Optimize</button>
 
 <button class="btn btn-sm btn-primary mx-3" x-on:click="open = ! open">New</button>
 <form hx-post="/new" x-show="open"><input class="input input-sm input-bordered" name="filename"><button class="btn btn-sm mx-3">Save</button></form>
@@ -25,12 +26,20 @@
     </div>
 
     <div class="divider divider-horizontal"></div>
+    <div class="collapse collapse-arrow bg-base-200">
+        <input type="checkbox" />
+        <div class="collapse-title text-xl font-medium">Strategy Code</div>
+        <div class="collapse-content">
     <div class="card flex-grow">
     <div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy">
         <pre><code class="language-python"></code></pre>
     </div>
+</div></div></div>
+<div class="card flex-grow" id="stats" hx-post="/fig" hx-trigger="click" hx-target="#plots"></div>
 </div>
-<div class="card flex-grow" id="stats"></div>
+<div class="flex w-full" id="plots">
+</div>
+<div class="flex w-full" id="plots1">
 </div>
 <script>
     document.getElementById('select2').addEventListener('change',function(){
