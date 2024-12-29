@@ -35,17 +35,15 @@ async def read_item(item: str):
     with open(f'strategies\\{item}') as f:
         fl=f.read()
     app.state.it=item
-    print(item)
-    '''if item == "macd.py":
-        return HTMLResponse(f<div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy w-full">
-        <form hx-post="/run" hx-target="#stats" hx-swap="innerHTML">
-            <input type="text" name="symbol" placeholder="Enter Ticker Symbol" class="input input-bordered" />
-            <button class="btn btn-sm btn-secondary mx-5" type="submit">Optimize</button>
-        </form>
-        <pre><code class="language-python">{fl}</code></pre></div>)
-    else:'''
     return HTMLResponse(f'''<div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy w-full">
     <pre><code class="language-python">{fl}</code></pre></div>''')
+
+@app.post("/select/{item}")
+async def read_item(item: str):
+    with open(f'strategies\\{item}') as f:
+        fl=f.read()
+    app.state.it=item
+    return HTMLResponse(f'''<div>{item}</div>''')
 
 @app.post("/edit")
 async def edit_item():
@@ -63,23 +61,19 @@ async def save_item(cont: str=Form(...)):
     shutil.copy(f"strategies/{app.state.it}", f"strategies/backups/{app.state.it}.{datetime.now().strftime('%d-%m-%y_%M%S')}")  # Works only in WINDOWS
     with open(f'strategies\\{app.state.it}','w') as f:
         f.write(cont)
-    return HTMLResponse(f'<div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy"><pre><code class="language-python">{cont}</code></pre></div>')
+    return HTMLResponse(f'''<div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy"><pre>
+                        <code class="language-python">{cont}</code></pre></div>''')
 
 @app.post("/run")
 async def run_strategy(symbol: str = Form(...)):
     print(app.state.it)
     strategy_name = app.state.it
-    # Filter data by symbol
     data = df.filter(pl.col('symbol') == symbol)
-    # Instantiate Backtester
     backtester = Backtester(data)
-    # Load the strategy module
     my_module = SourceFileLoader(strategy_name, f"strategies/{app.state.it}").load_module()
-    # Apply the strategy
-    results, app.state.fig , app.state.fig1 = backtester.apply_strategy(my_module.simple_moving_average_strategy)
-    # Format results for display
-    stats_df = pd.DataFrame([results]).T
-    stats_html = stats_df.to_html(justify='left')    
+    results, app.state.fig = backtester.apply_strategy(my_module.main)
+    stats_df = pd.DataFrame([results])
+    stats_html = stats_df.to_html(justify='left',index=False)    
     return HTMLResponse(stats_html.replace("\n", ""))
 
 @app.post("/fig")
@@ -99,7 +93,6 @@ async def new_item(filename: str=Form(...)):
 async def edit_item(symbol: str=Form(...)):
     df1=df.filter(pl.col('symbol')==symbol)
     app.state.df=df1
-    #print("loading  ".join(app.state.df))
     return symbol
 
 @app.post("/optimize")
@@ -113,10 +106,16 @@ async def run_strategy(symbol: str = Form(...)):
     # Load the strategy module
     my_module = SourceFileLoader(strategy_name, f"strategies/{app.state.it}").load_module()
     # Apply the strategy
-    results, app.state.fig , app.state.fig1 = backtester.apply_strategy(my_module.simple_moving_average_strategy,optimize=True)
-    
+    results, app.state.fig = backtester.apply_strategy(my_module.main,optimize=True)
     # Format results for display
-    stats_df = pd.DataFrame([results]).T
-    stats_html = stats_df.to_html(justify='left')
-    
+    stats_df = pd.DataFrame([results])
+    stats_html = stats_df.to_html(justify='left',index=False)
     return HTMLResponse(stats_html.replace("\n", ""))
+
+@app.get('/strategy')
+def page(request:Request):
+    seq=os.listdir('strategies')
+    file_list=[f for f in seq if os.path.isfile(os.path.join('strategies',f))]
+    with open(f'symbols.txt') as f:
+        fl=f.readlines()
+    return templates.TemplateResponse(request=request,name="strategy.html",context={"seq":file_list,"fl":fl})

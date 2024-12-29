@@ -1,15 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="m-3 flex flex-row" x-data="{ open: false }">
-<input id="select2" class="input input-sm input-bordered input-bordered-primary" 
-        hx-post="/loaddata" list="brow" placeholder="Symbol" name="symbol">
-<datalist id="brow">
-    {% for i in fl %}
-    <option value={{i}}>
-        {% endfor %} 
-</datalist>
-<button class="btn btn-sm btn-primary mx-5" hx-post="/run" hx-include="#select2" hx-target="#stats" hx-swap="innerHTML" >Run</button>
-<button class="btn btn-sm btn-primary mx-5" hx-post="/optimize" hx-include="#select2" hx-target="#stats" hx-swap="innerHTML">Optimize</button>
+<button class="btn btn-sm btn-primary mx-3" x-on:click="open = ! open">New</button>
 <form hx-post="/new" x-show="open"><input class="input input-sm input-bordered" name="filename"><button class="btn btn-sm mx-3">Save</button></form>
 </div>
 <div class="flex w-full">
@@ -17,16 +9,21 @@
     <div class="card place-items-center rounded-lg px-5">
     <ul class="menu menu-vertical bg-base-200">
         {% for item in seq %}
-        <li hx-post={{"/select/%s" % item}}><a>{{ item }}</a></li>
+        <li hx-post={{"/strategies/%s" % item}} hx-target=".strategy" hx-swap="outerHTML"><a>{{ item }}</a></li>
     {% endfor %}
     </ul>
     </div>
+
     <div class="divider divider-horizontal"></div>
-<div class="card flex-grow" id="stats" hx-post="/fig" hx-trigger="click" hx-target="#plots"></div>
-<div class="card flex-grow" id="params" hx-post="/fig" hx-trigger="click" hx-target="#plots"></div>
-</div>
-<div class="flex w-full" id="plots">
-</div>
+    <div class="collapse collapse-arrow bg-base-200">
+        <input type="checkbox" />
+        <div class="collapse-title text-xl font-medium">Strategy Code</div>
+        <div class="collapse-content">
+    <div class="card flex-grow">
+    <div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy">
+        <pre><code class="language-python"></code></pre>
+    </div>
+</div></div></div>
 <script>
     document.getElementById('select2').addEventListener('change',function(){
     if( document.getElementById('brow').querySelector('[value='+this.value+']') === null ){
