@@ -2,7 +2,7 @@
 {% block content %}
 <div class="m-3 flex flex-row" x-data="{ open: false }">
 <input id="select2" class="input input-sm input-bordered input-bordered-primary" 
-        hx-post="/loaddata" list="brow" placeholder="Symbol" name="symbol">
+        hx-post="/loaddata" hx-on="change" list="brow" placeholder="Symbol" name="symbol">
 <datalist id="brow">
     {% for i in fl %}
     <option value={{i}}>
