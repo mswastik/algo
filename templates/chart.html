@@ -1,0 +1,34 @@
+<div id="main" style="width: 1200px;height:500px;"></div>
+<script type="text/javascript">
+    var myChart = echarts.init(document.getElementById('main'));
+
+    var option = {
+        title: {
+            text: 'RFM'
+        },
+        tooltip: {trigger: 'axis',
+            axisPointer: {
+            type: 'line'
+    }},
+    toolbox: {
+    feature: {
+      dataZoom: {
+        yAxisIndex: false
+      }
+    }
+  },
+        legend: {
+            data:['Number of players']
+        },
+        xAxis: {
+            data: {{ xAxis|tojson }}
+        },
+        yAxis: {},
+        series: [{
+            type: 'candlestick',
+            data: {{ data|tojson }}
+        }]
+    };
+
+    myChart.setOption(option);
+</script>

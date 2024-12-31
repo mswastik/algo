@@ -39,17 +39,17 @@ def main(data: pl.DataFrame, short_window: int = 30, long_window: int = 100) -> 
             signals[i+1] = -1  # Sell signal
     return signals
 '''
-def ta_MACD(df,fastperiod,slowperiod,signalperiod):
-    ""
-    return ta.MACD(df,fastperiod,slowperiod,signalperiod)
-class MACD(Strategy):
+#def ta_MACD(df,fastperiod,slowperiod,signalperiod):
+#    ""
+#    return ta.MACD(df,fastperiod,slowperiod,signalperiod)
+class MACDStrategy(Strategy):
     fastperiod = 10 
     slowperiod = 150
     signalperiod = 6
     def init(self):
         print(self.data['Close'])
         price = self.data['Close']
-        self.macd, self.sig, self.hist =self.I(ta_MACD, np.array([float(i) for i in self.data['Close']]), self.fastperiod, self.slowperiod, self.signalperiod)
+        self.macd, self.sig, self.hist =self.I(ta.MACD, np.array([float(i) for i in self.data['Close']]), self.fastperiod, self.slowperiod, self.signalperiod)
         #dd=pd.DataFrame({'macd':self.macd,'sig':self.sig,'hist':self.hist})
     def next(self):
         if cross(self.macd, self.sig):
@@ -64,15 +64,15 @@ class MACD(Strategy):
                 self.sell()
 
 def main(df):
-    bt = Backtest(df, MACD, cash= 100000,exclusive_orders=True,trade_on_close=False,)
+    bt = Backtest(df, MACDStrategy, cash= 100000,exclusive_orders=True,trade_on_close=False,)
     stats = bt.run()
-    print(stats)
-    print(stats._trades)
+    #print(stats)
+    #print(stats._trades)
     return stats
 
 def optimize(df):
-    bt = Backtest(df, MACD, cash= 100000,exclusive_orders=True,trade_on_close=False,)
-    stats = bt.optimize(fastperiod=[10,20,30,40,50],slowperiod=range(60,200,5), maximize='Return [%]')
+    bt = Backtest(df, MACDStrategy, cash= 100000,exclusive_orders=True,trade_on_close=False,)
+    stats = bt.optimize(fastperiod=[10,20,30,40,50],slowperiod=range(60,200,5), maximize='Return (Ann.) [%]',method='skopt',return_optimization=True)
     #t1=go.Bar(x=['Buy', 'Sell'],y=[len(win_trades), len(loss_trades)], name='Trade Types')
     # Plot 3: Monthly Returns
     #returns = pl.Series(self.portfolio_values).pct_change()
