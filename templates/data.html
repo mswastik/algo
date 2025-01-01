@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}
+<title>Data</title>
+{% endblock %}
+{% block content %}
+<label class="label px-3">Symbols</label>
+<form action="/getdata" class="flex gap-3 px-3"><textarea name="sym" class="textarea textarea-bordered w-3/6" placeholder="Comma seperated symbol">
+    {{fl}}
+</textarea>
+<button type="submit" class="btn btn-primary" hx-post="/getdata">Get Data</button>
+<button type="submit" class="btn" hx-post="/saveconfig">Save Config</button>
+<button type="submit" class="btn" hx-post="/login">Fyers Login</button>
+</form>
+{% endblock %}

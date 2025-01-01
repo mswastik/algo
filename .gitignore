@@ -1,3 +1,6 @@
 __pycache__/*
 strategies/__pycache__/*
 strategies/__pycache__/macd.cpython-312.pyc
+fyersRequests.log
+fyersApi.log
+token_dict.pickle
