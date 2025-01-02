@@ -1,22 +1,19 @@
-from typing import Union
-from fastapi import FastAPI, Request, Form, Response
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 from datetime import datetime
-from typing import Annotated
 import shutil
 from importlib.machinery import SourceFileLoader
 import polars as pl
 import pandas as pd
-from backtest import Backtester
-from pyecharts.charts import Bar, Candlestick, Kline, Scatter, Line
+from pyecharts.charts import Bar, Candlestick, Scatter, Line, Grid
 from pyecharts import options as opts
-import pickle
+#import pickle
 from bs4 import BeautifulSoup
 from pyecharts.commons.utils import JsCode
-from data import fyers_login, fetch_data, save_to_parquet, update_parquet_data
+from data import fyers_login, update_parquet_data
 #import sys
 #sys.path.append("strategies")
 #from macd import MACDStrategy
@@ -40,6 +37,7 @@ app.state.fig=''
 app.state.stats=''
 app.state.sym=''
 app.state.trades=''
+app.state.equity=''
 app.state.fyers=''
 
 col=['Start','End','Duration','Exposure Time [%]','Equity Final [$]','Equity Peak [$]','Return [%]','Buy & Hold Return [%]','Return (Ann.) [%]','Volatility (Ann.) [%]',
@@ -105,6 +103,7 @@ async def run_strategy(symbol: str = Form(...)):
     my_module = SourceFileLoader(strategy_name, f"strategies/{app.state.sl}").load_module()
     stats = my_module.main(df1.to_pandas().set_index('date'))
     app.state.trades=stats['_trades']
+    app.state.equity=stats['_equity_curve']
     stats_df = pd.DataFrame([stats])
     app.state.stats=stats_df
     stats_html = stats_df.iloc[:,0:-3].T.to_html(justify='left',index=True,header=False)
@@ -118,10 +117,10 @@ async def fig():
     Candlestick(init_opts=opts.InitOpts(height="600px",width="1320px"))
     .add_xaxis(df2['date'].astype('str').tolist())
     .add_yaxis(series_name="", y_axis=df2[['Open','Close','Low','High']].to_numpy().tolist(),itemstyle_opts=opts.ItemStyleOpts(color="#00da3c",border_color="#00da3c",
-         color0="#ec0000",border_color0="#ec0000"))
-    .set_global_opts(title_opts=opts.TitleOpts(title=app.state.sym), datazoom_opts=[
-        opts.DataZoomOpts(is_show=False,type_="inside",xaxis_index=[0, 1],range_start=90,range_end=100,),
-        opts.DataZoomOpts(is_show=True,xaxis_index=[0, 5],type_="slider",pos_bottom="5%",range_start=85,range_end=100,)],
+         color0="#ec0000",border_color0="#ec0000"),yaxis_index=0,xaxis_index=0)
+    .set_global_opts(title_opts=opts.TitleOpts(title=app.state.sym,pos_left="7%",pos_top="1%"),
+        legend_opts=opts.LegendOpts(pos_top="2%",orient='horizontal'),
+        # datazoom_opts=[opts.DataZoomOpts(type_="inside"),opts.DataZoomOpts(pos_top="middle",xaxis_index=0,range_end="100%")],
         tooltip_opts=opts.TooltipOpts(trigger="axis",axis_pointer_type="cross",background_color="rgba(245, 245, 245, 0.8)",border_width=1,border_color="#ccc",textstyle_opts=opts.TextStyleOpts(color="#000"),),))
     s1=Scatter().add_xaxis(app.state.trades['EntryTime'].astype('str').tolist()).add_yaxis('Entry',app.state.trades['EntryPrice'].tolist(),symbol_size=15,symbol='triangle',
     label_opts=opts.LabelOpts(is_show=False))
@@ -138,27 +137,52 @@ async def fig():
         l=Line().add_xaxis([n['EntryTime'].strftime("%Y-%m-%d"),n['ExitTime'].strftime("%Y-%m-%d")]).add_yaxis(series_name='Trades',y_axis=[n['EntryPrice'],n['ExitPrice']],label_opts=opts.LabelOpts(is_show=False)
         ,linestyle_opts=opts.LineStyleOpts(width=2,color=col))
         bar.overlap(l)
-    htstr=bar.render_embed()
+    #bar.extend_axis(yaxis=opts.AxisOpts(position="right",min_=0,max_=100,)).add_yaxis('Returns',app.state.equity['DrawdownPct'].tolist(),yaxis_index=1)
+    print(df2)
+    print(app.state.equity.reset_index()[['date','DrawdownPct']])
+    df2=df2.join(app.state.equity['DrawdownPct'],on='date',how='left')
+    area = Line().add_xaxis(df2['date'].astype('str').tolist()).add_yaxis('Returns',df2['DrawdownPct'].round(3).tolist(),
+                                    areastyle_opts=opts.AreaStyleOpts(opacity=.6),xaxis_index=0,yaxis_index=1).set_global_opts(
+        yaxis_opts=opts.AxisOpts(position='right'))
+    #bar.overlap(area, yaxis_index=1, is_add_yaxis=True)
+    trc=app.state.trades.copy()
+    #trp=trc.copy() #for cumulative PnL for Portfolio value
+    #trp['CumProfit']=trp['PnL'].cumsum()
+    trc=trc.resample('ME',on='ExitTime').sum(numeric_only=True)
+    trc['CumProfit']=trc['PnL'].cumsum()
+    cuma = Line(init_opts=opts.InitOpts(height="150px",width="820px")).add_xaxis(trc.index.astype('str').tolist()).add_yaxis('Returns',trc['CumProfit'].tolist(),
+            areastyle_opts=opts.AreaStyleOpts(opacity=.6),yaxis_index=3,xaxis_index=1,label_opts=opts.LabelOpts(is_show=False)).set_global_opts(
+        yaxis_opts=opts.AxisOpts(position='right'))
+    #print(trc)
+    color_function = """
+        function (params) {
+            if (params.value > 0) {
+                return 'green';
+            } else if (params.value <= 0) {
+                return 'red';
+            }}
+        """
+    bar1=(Bar(init_opts=opts.InitOpts(height="300px",width="820px")).add_xaxis(trc.index.astype('str').tolist()).add_yaxis("PnL",trc['PnL'].round(0).tolist(),
+        #label_opts=opts.LabelOpts(is_show=True,formatter=JsCode("function(param) {return Number(param.data[1]).toFixed(0);}")))
+        label_opts=opts.LabelOpts(is_show=True,color='black',position='outside',vertical_align='top'),
+        itemstyle_opts=opts.ItemStyleOpts(color=JsCode(color_function)),yaxis_index=2,xaxis_index=1)
+        #.extend_axis(yaxis=opts.AxisOpts(position="right",min_=0,max_=100,axisline_opts=opts.AxisLineOpts(
+        #        linestyle_opts=opts.LineStyleOpts(color="#d14a61")),))
+        #.add_yaxis('Returns',trc['CumProfit'].tolist(),yaxis_index=1)
+        )
+    #bar1.set_global_opts(datazoom_opts=opts.DataZoomOpts(is_show=False,is_disabled=True))
+    bar1.set_series_opts(label_opts=opts.LabelOpts(position="end"))
+    #bar1.overlap(cuma)
+    #line=Line().add_xaxis(trc.index.astype('str').tolist()).add_yaxis("Return",trc['ReturnPct'].tolist())
+    grid = (Grid(init_opts=opts.InitOpts(height="1000px",width="1320px")).add(bar, grid_opts=opts.GridOpts(pos_bottom="55%"),grid_index=0)
+            .add(bar1, grid_opts=opts.GridOpts(pos_bottom="3%",pos_top="58%"),grid_index=1)
+            .add(area, grid_opts=opts.GridOpts(pos_bottom="55%"))
+            .add(cuma, grid_opts=opts.GridOpts(pos_bottom="3%",pos_top="58%")))
+    grid.options['dataZoom'] = [opts.DataZoomOpts(type_="inside",yaxis_index=0,range_end="100%"),opts.DataZoomOpts(xaxis_index=0,pos_top="48%",range_end="100%",is_zoom_on_mouse_wheel= True, type_= "slider")]
+    #grid.options['Legend'] = opts.LegendOpts(orient='horizontal',pos_top="2%")
+    htstr=grid.render_embed()
     soup=BeautifulSoup(htstr,features="lxml")
-    tags=soup.find('div')
-    '''for tag in tags:
-        #try:
-        current_style = tag.get('style', '')
-        styles = {}
-        for item in current_style.split(';'):
-            item = item.strip()
-            if item and ':' in item:
-                key, value = item.split(':', 1)
-                styles[key.strip()] = value.strip()
-        styles.pop('width', None)
-        styles.pop('height', None)
-        styles['width'] = '1320px'
-        styles['height'] = '600px'
-        tag['style'] = '; '.join(f'{k}: {v}' for k, v in styles.items())
-        #except:
-        #    tag['style']='width:1320px;height:600px'
-        '''
-    tags['style']="width:1320px;height:600px"
+    print(app.state.equity)
     return HTMLResponse(soup.body)
 
 @app.post("/new")
@@ -168,7 +192,7 @@ async def new_item(filename: str=Form(...)):
         return {"message": "File already exists"}
     with open(f'strategies\\{file_path}', "w") as file:
         file.write("")
-    return HTMLResponse(f'<div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy"><pre><code class="language-python">{cont}</code></pre></div>')
+    return HTMLResponse(f'<div hx-post="/edit" hx-swap="outerHTML" class="mockup-code strategy"><pre><code class="language-python"></code></pre></div>')
 
 @app.post("/loaddata")
 async def edit_item(symbol: str=Form(...)):
@@ -184,6 +208,7 @@ async def run_strategy(symbol: str = Form(...)):
     my_module = SourceFileLoader(strategy_name, f"strategies/{app.state.sl}").load_module()
     stats = my_module.optimize(df1.to_pandas().set_index('date'))
     app.state.trades=stats[0]['_trades']
+    app.state.equity=stats[0]['_equity_curve']
     stats_df = pd.DataFrame([stats[0]])
     stats_df['best_params']=[stats[1].x]
     print(stats_df)
@@ -211,6 +236,7 @@ async def page(request:Request):
 async def page(request:Request,ind:int):
     rd=pd.DataFrame(runs.iloc[ind])
     app.state.trades=pd.DataFrame(rd.loc['_trades'][ind])
+    app.state.equity=pd.DataFrame(rd.loc['_equity_curve'][ind])
     rd=rd.drop(['_equity_curve','_trades'])
     rd=rd.rename(columns={0:"Stats"})
     app.state.sym=rd.loc['Symbol'].values[0]

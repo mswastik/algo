@@ -1,0 +1,9 @@
+fastapi
+fyers-apiv3
+polars-talib
+ta-lib
+BeautifulSoup
+pyecharts
+backtesting
+python-multipart
+numpy>=2.0

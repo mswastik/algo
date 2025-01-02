@@ -1,14 +1,10 @@
 import polars as pl
 import talib as ta
-from typing import List
 import numpy as np
 from backtesting import Backtest, Strategy
 from backtesting.lib import crossover, cross
-from pyecharts.charts import Bar, Candlestick, Kline
-from pyecharts import options as opts
-import plotly.io as pio
-
-pio.templates.default = "plotly_white"
+#from pyecharts.charts import Bar, Candlestick, Kline
+#from pyecharts import options as opts
 
 class MACDStrategy(Strategy):
     fastperiod = 10 
