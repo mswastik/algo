@@ -6,4 +6,5 @@ BeautifulSoup
 pyecharts
 backtesting
 python-multipart
-numpy>=2.0
+numpy
+scikit-optimize
